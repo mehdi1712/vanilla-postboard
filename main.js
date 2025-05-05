@@ -1,12 +1,30 @@
-import { renderPostWithComments } from "./UI/uiRender.js";
+import { renderPostWithComments } from "./services/uiRender.js";
 import { fetchData } from "./api/apiClient.js";
 import { ENDPOINTS } from "./constants/endpoints.js"
+import { clearCache } from "./api/apiClient.js";
+import { PostSkeleton } from "./UI/skeleton/PostSkeleton.js";
+
+function showSkeletons() {
+    const app = document.getElementById("app");
+    app.innerHTML = '';
+    // Add 5 skeleton posts
+    for (let i = 0; i < 5; i++) {
+        const skeleton = new PostSkeleton();
+        app.appendChild(skeleton);
+    }
+}
 
 // Fetch and render posts
 async function init() {
     try {
+        // Show skeletons while loading
+        showSkeletons();
+        
         const allPosts = await fetchData(ENDPOINTS.POSTS);
         const top5Posts = getTop5Posts(allPosts.posts);
+        
+        // Clear skeletons
+        document.getElementById("app").innerHTML = '';
         
         // Process each popular post
         for (const post of top5Posts) {
@@ -37,3 +55,14 @@ function getTop5Posts(posts) {
 
 // Initialize the application
 init();
+
+// Clear cache
+document.getElementById('clearCache').addEventListener('click', () => {
+    clearCache();
+});
+
+// Refetch  
+document.getElementById('refetch').addEventListener('click', () => {
+    init();
+});
+

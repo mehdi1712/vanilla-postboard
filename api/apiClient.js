@@ -2,11 +2,46 @@
 
 import { config} from "../constants/config.js";
 
-const { API_TIMEOUT, MAX_CONCURRENT_REQUESTS, CACHE_EXPIRY } = config;
+const { API_TIMEOUT, MAX_CONCURRENT_REQUESTS, CACHE_EXPIRY, ENABLE_CACHING, ENABLE_LOGGING, CACHE_MODE } = config;
 const cache = new Map();
 let activeRequests = 0;
 const queue = [];
 const pendingRequests = new Map(); // Track in-flight requests to prevent duplicates
+
+export function fetchData(url) {
+  // Check if there's a valid cached response
+  if (ENABLE_CACHING) {
+    if(CACHE_MODE === 'memory'){
+      const cachedData = cache.get(url);
+      if (cachedData && isCacheValid(cachedData)) {
+        if (ENABLE_LOGGING) console.log("Cache hit:", url);
+        return Promise.resolve(cachedData.data);
+      }
+    } else {
+      const cachedData = localStorage.getItem(url);
+      if (cachedData && isCacheValid(JSON.parse(cachedData))) {
+        if (ENABLE_LOGGING) console.log("Cache hit:", url);
+        return Promise.resolve(JSON.parse(cachedData).data);
+      }
+    }
+  }
+
+  // Check if there's already a pending request for this URL
+  if (pendingRequests.has(url)) {
+    if (ENABLE_LOGGING) console.log("Deduplicating request:", url);
+    return pendingRequests.get(url);
+  }
+
+  // Create new request
+  const requestPromise = new Promise((resolve, reject) => {
+    queue.push({ url, resolve, reject });
+    processQueue();
+  });
+
+  // Store the promise to prevent duplicate requests
+  pendingRequests.set(url, requestPromise);
+  return requestPromise;
+}
 
 function fetchWithTimeout(url, timeout = API_TIMEOUT) {
   return new Promise((resolve, reject) => {
@@ -38,17 +73,24 @@ function processQueue() {
 
   fetchWithTimeout(url)
     .then((data) => {
-      if (config.enableCaching) {
-        cache.set(url, {
-          data,
-          timestamp: Date.now()
-        });
+      if (ENABLE_CACHING) {
+        if(CACHE_MODE === 'memory'){
+          cache.set(url, {
+            data,
+            timestamp: Date.now()
+          });
+        } else {
+          localStorage.setItem(url, JSON.stringify({
+            data,
+            timestamp: Date.now()
+          }));
+        }
       }
-      if (config.enableLogging) console.log("Fetched:", url);
+      if (ENABLE_LOGGING) console.log("Fetched:", url);
       resolve(data);
     })
     .catch((error) => {
-      if (config.enableLogging) console.error("Error fetching:", url, error);
+      if (ENABLE_LOGGING) console.error("Error fetching:", url, error);
       reject(error);
     })
     .finally(() => {
@@ -63,35 +105,12 @@ function isCacheValid(cacheEntry) {
   return Date.now() - cacheEntry.timestamp < CACHE_EXPIRY;
 }
 
-export function fetchData(url) {
-  // Check if there's a valid cached response
-  if (config.enableCaching) {
-    const cachedData = cache.get(url);
-    if (cachedData && isCacheValid(cachedData)) {
-      if (config.enableLogging) console.log("Cache hit:", url);
-      return Promise.resolve(cachedData.data);
-    }
-  }
-
-  // Check if there's already a pending request for this URL
-  if (pendingRequests.has(url)) {
-    if (config.enableLogging) console.log("Deduplicating request:", url);
-    return pendingRequests.get(url);
-  }
-
-  // Create new request
-  const requestPromise = new Promise((resolve, reject) => {
-    queue.push({ url, resolve, reject });
-    processQueue();
-  });
-
-  // Store the promise to prevent duplicate requests
-  pendingRequests.set(url, requestPromise);
-  return requestPromise;
-}
-
 // Optional: Add a method to clear the cache
-export function clearCache() {
-  cache.clear();
-  if (config.enableLogging) console.log("Cache cleared");
+export function clearCache() {  
+  if(CACHE_MODE === 'memory'){
+    cache.clear();
+  } else {
+    localStorage.clear();
+  }
+  if (ENABLE_LOGGING) console.log("Cache cleared");
 }

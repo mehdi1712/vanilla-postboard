@@ -1,6 +1,6 @@
 // UI/uiRender.js
-import { PostCard } from "./post/PostCard.js";
-import { Comment } from "./comments/Comment.js";
+import { PostCard } from "../UI/post/PostCard.js";
+import { Comment } from "../UI/comments/Comment.js";
 
 export function renderPostWithComments(post, comments = []) {
   const postElement = new PostCard();
