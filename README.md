@@ -42,14 +42,14 @@ vanilla-postboard/
 │   │   └── PostCard.js       # Post component
 │   ├── comments/
 │   │   └── Comment.js        # Comment component
-│   └── uiRender.js           # UI rendering logic
+│            
 ├── api/
 │   └── apiClient.js          # Advanced API client
 ├── constants/
 │   ├── config.js            # Configuration settings
 │   └── endpoints.js         # API endpoints
 ├── services/
-│   └── postService.js       # Post-related business logic
+│   └── uiRender.js       # UI rendering logic
 └── main.js                  # Application entry point
 ```
 
